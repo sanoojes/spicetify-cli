@@ -176,6 +176,7 @@ declare namespace Spicetify {
 		index: PlayerIndex;
 		item: PlayerTrack;
 		shuffle: boolean;
+		smartShuffle: boolean;
 		repeat: number;
 		speed: number;
 		positionAsOfTimestamp: number;
@@ -236,6 +237,17 @@ declare namespace Spicetify {
 		album_disc_count: string;
 		track_player: string;
 		album_title: string;
+		"canvas.artist.avatar": string;
+		"canvas.artist.name": string;
+		"canvas.artist.uri": string;
+		"canvas.canvasUri": string;
+		"canvas.entityUri": string;
+		"canvas.explicit": string;
+		"canvas.fileId": string;
+		"canvas.id": string;
+		"canvas.type": string;
+		"canvas.uploadedBy": string;
+		"canvas.url": string;
 		"collection.can_add": string;
 		image_large_url: string;
 		"actions.skipping_prev_past_track": string;
@@ -255,6 +267,18 @@ declare namespace Spicetify {
 		duration: string;
 		album_track_count: string;
 		popularity: string;
+		associated_video_id: string;
+		video_association: string;
+		video_association_image: string;
+		video_association_image_height: string;
+		video_association_image_height_large: string;
+		video_association_image_height_xxlarge: string;
+		video_association_image_large: string;
+		video_association_image_width: string;
+		video_association_image_width_large: string;
+		video_association_image_width_xxlarge: string;
+		video_association_image_xxlarge: string;
+		[key: string]: string;
 	};
 	type Album = {
 		type: string;
@@ -298,6 +322,12 @@ declare namespace Spicetify {
 		hifiStatus: number;
 	};
 	namespace Player {
+		/**
+		* 
+		* Contains vast array of internal APIs.
+		* Please explore in Devtool Console.
+		*/
+		const origin: any
 		/**
 		 * Register a listener `type` on Spicetify.Player.
 		 *

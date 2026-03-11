@@ -323,11 +323,11 @@ declare namespace Spicetify {
 	};
 	namespace Player {
 		/**
-		* 
-		* Contains vast array of internal APIs.
-		* Please explore in Devtool Console.
-		*/
-		const origin: any
+		 *
+		 * Contains vast array of internal APIs.
+		 * Please explore in Devtool Console.
+		 */
+		const origin: any;
 		/**
 		 * Register a listener `type` on Spicetify.Player.
 		 *

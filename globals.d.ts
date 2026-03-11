@@ -1344,6 +1344,8 @@ declare namespace Spicetify {
 	const ReactDOM: any;
 	/** React DOM Server instance to render components to string */
 	const ReactDOMServer: any;
+	/** React JSX runtime instance to compile and transform JSX elements */
+	const ReactJSX: any;
 
 	/** Stock React components exposed from Spotify library */
 	namespace ReactComponent {

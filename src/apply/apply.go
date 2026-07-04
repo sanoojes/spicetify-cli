@@ -38,9 +38,6 @@ func AdditionalOptions(appsFolderPath string, flags Flag) {
 		},
 		filepath.Join(appsFolderPath, "xpui", "xpui.js"):         jsModifiers,
 		filepath.Join(appsFolderPath, "xpui", "xpui-modules.js"): jsModifiers,
-		filepath.Join(appsFolderPath, "xpui", "xpui-snapshot.js"): {
-			insertCustomApp,
-		},
 		filepath.Join(appsFolderPath, "xpui", "home-v2.js"): {
 			insertHomeConfig,
 		},
@@ -61,7 +58,20 @@ func AdditionalOptions(appsFolderPath string, flags Flag) {
 		spotifyPatch, _ = strconv.Atoi(verParts[2])
 	}
 
-	filesToModified[filepath.Join(appsFolderPath, "xpui", "xpui.js")] = append(filesToModified[filepath.Join(appsFolderPath, "xpui", "xpui.js")], insertCustomApp)
+	if len(flags.CustomApp) > 0 {
+		if customAppTarget := findCustomAppTarget(appsFolderPath); customAppTarget != "" {
+			filesToModified[customAppTarget] = append(filesToModified[customAppTarget], insertCustomApp)
+			snapshotPath := filepath.Join(appsFolderPath, "xpui", "xpui-snapshot.js")
+			if customAppTarget != snapshotPath {
+				filesToModified[snapshotPath] = append(filesToModified[snapshotPath], insertCustomAppChunkMap)
+			}
+		} else {
+			utils.PrintError("Spotify version mismatch with Spicetify. Please report it on our github repository.")
+			utils.PrintInfo("Spicetify might have been updated for this version already. Please run `spicetify update` to check for a new version.")
+			utils.PrintInfo("If one isn't available yet, please wait for an update to be released or downgrade Spotify to a supported version.")
+		}
+	}
+
 	if spotifyMajor >= 1 && spotifyMinor >= 2 && spotifyPatch >= 57 {
 		filesToModified[filepath.Join(appsFolderPath, "xpui", "xpui.js")] = append(filesToModified[filepath.Join(appsFolderPath, "xpui", "xpui.js")], insertExpFeatures)
 	} else {
@@ -137,37 +147,39 @@ func htmlMod(htmlPath string, flags Flag) {
 		return
 	}
 
-	extensionsHTML := "\n"
-	helperHTML := "\n"
+	var extensionsHTML strings.Builder
+	var helperHTML strings.Builder
+	extensionsHTML.WriteByte('\n')
+	helperHTML.WriteByte('\n')
 
 	if flags.InjectThemeJS {
-		extensionsHTML += "<script defer src='extensions/theme.js'></script>\n"
+		extensionsHTML.WriteString("<script defer src='extensions/theme.js'></script>\n")
 	}
 
 	if flags.SidebarConfig {
-		helperHTML += "<script defer src='helper/sidebarConfig.js'></script>\n"
+		helperHTML.WriteString("<script defer src='helper/sidebarConfig.js'></script>\n")
 	}
 
 	if flags.HomeConfig {
-		helperHTML += "<script defer src='helper/homeConfig.js'></script>\n"
+		helperHTML.WriteString("<script defer src='helper/homeConfig.js'></script>\n")
 	}
 
 	if flags.ExpFeatures {
-		helperHTML += "<script defer src='helper/expFeatures.js'></script>\n"
+		helperHTML.WriteString("<script defer src='helper/expFeatures.js'></script>\n")
 	}
 
 	if flags.SpicetifyVer != "" {
-		var extList string
+		var extList strings.Builder
 		for _, ext := range flags.Extension {
-			extList += fmt.Sprintf(`"%s",`, ext)
+			fmt.Fprintf(&extList, `"%s",`, ext)
 		}
 
-		var customAppList string
+		var customAppList strings.Builder
 		for _, app := range flags.CustomApp {
-			customAppList += fmt.Sprintf(`"%s",`, app)
+			fmt.Fprintf(&customAppList, `"%s",`, app)
 		}
 
-		helperHTML += fmt.Sprintf(`<script>
+		fmt.Fprintf(&helperHTML, `<script>
 			Spicetify.Config={};
 			Spicetify.Config["version"]="%s";
 			Spicetify.Config["current_theme"]="%s";
@@ -176,14 +188,14 @@ func htmlMod(htmlPath string, flags Flag) {
 			Spicetify.Config["custom_apps"] = [%s];
 			Spicetify.Config["check_spicetify_update"]=%v;
 		</script>
-		`, flags.SpicetifyVer, flags.CurrentTheme, flags.ColorScheme, extList, customAppList, flags.CheckSpicetifyUpdate)
+		`, flags.SpicetifyVer, flags.CurrentTheme, flags.ColorScheme, extList.String(), customAppList.String(), flags.CheckSpicetifyUpdate)
 	}
 
 	for _, v := range flags.Extension {
 		if strings.HasSuffix(v, ".mjs") {
-			extensionsHTML += fmt.Sprintf("<script defer type='module' src='extensions/%s'></script>\n", v)
+			fmt.Fprintf(&extensionsHTML, "<script defer type='module' src='extensions/%s'></script>\n", v)
 		} else {
-			extensionsHTML += fmt.Sprintf("<script defer src='extensions/%s'></script>\n", v)
+			fmt.Fprintf(&extensionsHTML, "<script defer src='extensions/%s'></script>\n", v)
 		}
 	}
 
@@ -192,9 +204,9 @@ func htmlMod(htmlPath string, flags Flag) {
 		if err == nil {
 			for _, extensionFile := range manifest.ExtensionFiles {
 				if strings.HasSuffix(extensionFile, ".mjs") {
-					extensionsHTML += fmt.Sprintf("<script defer type='module' src='extensions/%s/%s'></script>\n", v, extensionFile)
+					fmt.Fprintf(&extensionsHTML, "<script defer type='module' src='extensions/%s/%s'></script>\n", v, extensionFile)
 				} else {
-					extensionsHTML += fmt.Sprintf("<script defer src='extensions/%s/%s'></script>\n", v, extensionFile)
+					fmt.Fprintf(&extensionsHTML, "<script defer src='extensions/%s/%s'></script>\n", v, extensionFile)
 				}
 			}
 		}
@@ -211,13 +223,13 @@ func htmlMod(htmlPath string, flags Flag) {
 			&content,
 			`<\!-- spicetify helpers -->`,
 			func(submatches ...string) string {
-				return fmt.Sprintf("%s%s", submatches[0], helperHTML)
+				return fmt.Sprintf("%s%s", submatches[0], helperHTML.String())
 			})
 		utils.Replace(
 			&content,
 			`</body>`,
 			func(submatches ...string) string {
-				return fmt.Sprintf("%s%s", extensionsHTML, submatches[0])
+				return fmt.Sprintf("%s%s", extensionsHTML.String(), submatches[0])
 			})
 		return content
 	})
@@ -244,8 +256,8 @@ func getUserCSS(themeFolder string) string {
 }
 
 func getColorCSS(scheme map[string]string) string {
-	var variableList string
-	var variableRGBList string
+	var variableList strings.Builder
+	var variableRGBList strings.Builder
 	mergedScheme := make(map[string]string)
 
 	for k, v := range scheme {
@@ -260,56 +272,126 @@ func getColorCSS(scheme map[string]string) string {
 
 	for k, v := range mergedScheme {
 		parsed := utils.ParseColor(v)
-		variableList += fmt.Sprintf("    --spice-%s: #%s;\n", k, parsed.Hex())
-		variableRGBList += fmt.Sprintf("    --spice-rgb-%s: %s;\n", k, parsed.RGB())
+		fmt.Fprintf(&variableList, "    --spice-%s: #%s;\n", k, parsed.Hex())
+		fmt.Fprintf(&variableRGBList, "    --spice-rgb-%s: %s;\n", k, parsed.RGB())
 	}
 
-	return fmt.Sprintf(":root {\n%s\n%s\n}\n", variableList, variableRGBList)
+	return fmt.Sprintf(":root {\n%s\n%s\n}\n", variableList.String(), variableRGBList.String())
+}
+
+func customAppReactPatterns() []string {
+	return []string{
+		// Sync pattern: X.lazy((() => Y.Z(123).then(W.bind(W, 456))))
+		`([\w_\$][\w_\$\d]*(?:\(\))?)\.lazy\(\((?:\(\)=>|function\(\)\{return )(\w+)\.(\w+)\(["']?[\w-]+["']?\)\.then\(\w+\.bind\(\w+,["']?[\w-]+["']?\)\)\}?\)\)`,
+		// Async pattern (1.2.78+): m.lazy(async()=>{...await o.e(123).then(...)})
+		`([\w_\$][\w_\$\d]*)\.lazy\(async\(\)=>\{(?:[^{}]|\{[^{}]*\})*await\s+(\w+)\.(\w+)\(["']?[\w-]+["']?\)\.then\(\w+\.bind\(\w+,["']?[\w-]+["']?\)\)`,
+		// Async Promise.all pattern (1.2.78+): m.lazy(async()=>await Promise.all([Y.Z(123),...]).then(...))
+		// Capture the chunk loader from the first entry inside Promise.all, not from .bind()
+		`([\w_\$][\w_\$\d]*(?:\(\))?)\.lazy\(async\(\)=>await\s+Promise\.all\(\[(\w+)\.(\w+)\(["']?[\w-]+["']?\)`,
+	}
+}
+
+func customAppElementPatterns() []string {
+	return []string{
+		// JSX pattern (1.2.78+): (0,S.jsx)(se.qh,{path:"/collection/*",element:...})
+		// Settings page should be more consistent with having no conditional renders
+		`(\([\w$\.,]+\))\(([\w\.]+),\{path:"/settings(?:/[\w\*]+)?",?(element|children)?`,
+		// createElement pattern: X.createElement(Y,{path:"/collection"...})
+		`([\w_\$][\w_\$\d]*(?:\(\))?\.createElement|\([\w$\.,]+\))\(([\w\.]+),\{path:"\/collection"(?:,(element|children)?[:.\w,{}()$/*"]+)?\}`,
+	}
+}
+
+func supportsCustomAppInjection(content string) bool {
+	reactSymbs, _ := utils.FindSymbolWithPattern("", content, customAppReactPatterns())
+	eleSymbs, _ := utils.FindSymbolWithPattern("", content, customAppElementPatterns())
+	return len(reactSymbs) >= 3 && len(eleSymbs) >= 3
+}
+
+func findCustomAppTarget(appsFolderPath string) string {
+	candidates := []string{
+		filepath.Join(appsFolderPath, "xpui", "xpui-modules.js"),
+		filepath.Join(appsFolderPath, "xpui", "xpui-snapshot.js"),
+		filepath.Join(appsFolderPath, "xpui", "xpui.js"),
+	}
+
+	for _, candidate := range candidates {
+		raw, err := os.ReadFile(candidate)
+		if err != nil {
+			continue
+		}
+		if supportsCustomAppInjection(string(raw)) {
+			return candidate
+		}
+	}
+
+	return ""
+}
+
+func getCustomAppChunkMaps(flags Flag) (string, string) {
+	var appMap strings.Builder
+	var cssEnableMap strings.Builder
+
+	for _, app := range flags.CustomApp {
+		appName := `spicetify-routes-` + app
+		fmt.Fprintf(&appMap, `"%s":"%s",`, appName, appName)
+		fmt.Fprintf(&cssEnableMap, `,"%s":1`, appName)
+	}
+
+	return appMap.String(), cssEnableMap.String()
+}
+
+func insertCustomAppChunkMap(jsPath string, flags Flag) {
+	utils.ModifyFile(jsPath, func(content string) string {
+		appMap, cssEnableMap := getCustomAppChunkMaps(flags)
+
+		utils.Replace(
+			&content,
+			`\{(\d+:"xpui)`,
+			func(submatches ...string) string {
+				return fmt.Sprintf("{%s%s", appMap, submatches[1])
+			})
+
+		utils.ReplaceOnce(
+			&content,
+			`(\.u=\w+=>""\+\(\(\{)`,
+			func(submatches ...string) string {
+				return fmt.Sprintf("%s%s", submatches[1], appMap)
+			})
+
+		utils.ReplaceOnce(
+			&content,
+			`(\.f\.miniCss=function\(\w+,\w+\).*?\(\{)([0-9:,]+)(\}\)\[\w+\])`,
+			func(submatches ...string) string {
+				return fmt.Sprintf("%s%s%s%s", submatches[1], submatches[2], cssEnableMap, submatches[3])
+			})
+
+		return content
+	})
 }
 
 func insertCustomApp(jsPath string, flags Flag) {
 	utils.ModifyFile(jsPath, func(content string) string {
-		// React lazy loading patterns for dynamic imports
-		reactPatterns := []string{
-			// Sync pattern: X.lazy((() => Y.Z(123).then(W.bind(W, 456))))
-			`([\w_\$][\w_\$\d]*(?:\(\))?)\.lazy\(\((?:\(\)=>|function\(\)\{return )(\w+)\.(\w+)\(["']?[\w-]+["']?\)\.then\(\w+\.bind\(\w+,["']?[\w-]+["']?\)\)\}?\)\)`,
-			// Async pattern (1.2.78+): m.lazy(async()=>{...await o.e(123).then(...)})
-			`([\w_\$][\w_\$\d]*)\.lazy\(async\(\)=>\{(?:[^{}]|\{[^{}]*\})*await\s+(\w+)\.(\w+)\(["']?[\w-]+["']?\)\.then\(\w+\.bind\(\w+,["']?[\w-]+["']?\)\)`,
-			// Async Promise.all pattern (1.2.78+): m.lazy(async()=>await Promise.all([Y.Z(123),...]).then(...))
-			// Capture the chunk loader from the first entry inside Promise.all, not from .bind()
-			`([\w_\$][\w_\$\d]*(?:\(\))?)\.lazy\(async\(\)=>await\s+Promise\.all\(\[(\w+)\.(\w+)\(["']?[\w-]+["']?\)`,
-		}
-
-		// React element/route patterns for path matching
-		elementPatterns := []string{
-			// JSX pattern (1.2.78+): (0,S.jsx)(se.qh,{path:"/collection/*",element:...})
-			// Settings page should be more consistent with having no conditional renders
-			`(\([\w$\.,]+\))\(([\w\.]+),\{path:"/settings(?:/[\w\*]+)?",?(element|children)?`,
-			// createElement pattern: X.createElement(Y,{path:"/collection"...})
-			`([\w_\$][\w_\$\d]*(?:\(\))?\.createElement|\([\w$\.,]+\))\(([\w\.]+),\{path:"\/collection"(?:,(element|children)?[:.\w,{}()$/*"]+)?\}`,
-		}
-
 		reactSymbs, matchedReactPattern := utils.FindSymbolWithPattern(
 			"Custom app React symbols",
 			content,
-			reactPatterns)
+			customAppReactPatterns())
 		eleSymbs, matchedElementPattern := utils.FindSymbolWithPattern(
 			"Custom app React Element",
 			content,
-			elementPatterns)
+			customAppElementPatterns())
 
-		if (len(reactSymbs) < 2) || (len(eleSymbs) == 0) {
+		if (len(reactSymbs) < 3) || (len(eleSymbs) < 3) {
 			utils.PrintError("Spotify version mismatch with Spicetify. Please report it on our github repository.")
 			utils.PrintInfo("Spicetify might have been updated for this version already. Please run `spicetify update` to check for a new version.")
 			utils.PrintInfo("If one isn't available yet, please wait for an update to be released or downgrade Spotify to a supported version.")
 			return content
 		}
 
-		appMap := ""
-		appReactMap := ""
-		appEleMap := ""
-		cssEnableMap := ""
-		appNameArray := ""
+		var appReactMap strings.Builder
+		var appEleMap strings.Builder
+		var appNameArray strings.Builder
+		var appMap strings.Builder
+		var cssEnableMap strings.Builder
 
 		// Spotify's new route system
 		wildcard := ""
@@ -321,26 +403,28 @@ func insertCustomApp(jsPath string, flags Flag) {
 
 		for index, app := range flags.CustomApp {
 			appName := `spicetify-routes-` + app
-			appMap += fmt.Sprintf(`"%s":"%s",`, appName, appName)
-			appNameArray += fmt.Sprintf(`"%s",`, app)
+			fmt.Fprintf(&appMap, `"%s":"%s",`, appName, appName)
+			fmt.Fprintf(&appNameArray, `"%s",`, app)
 
-			appReactMap += fmt.Sprintf(
+			fmt.Fprintf(
+				&appReactMap,
 				`,spicetifyApp%d=%s.lazy((()=>%s.%s("%s").then(%s.bind(%s,"%s"))))`,
 				index, reactSymbs[0], reactSymbs[1], reactSymbs[2],
 				appName, reactSymbs[1], reactSymbs[1], appName)
 
-			appEleMap += fmt.Sprintf(
+			fmt.Fprintf(
+				&appEleMap,
 				`%s(%s,{path:"/%s/%s",pathV6:"/%s/*",%s:%s(spicetifyApp%d,{})}),`,
 				eleSymbs[0], eleSymbs[1], app, wildcard, app, eleSymbs[2], eleSymbs[0], index)
 
-			cssEnableMap += fmt.Sprintf(`,"%s":1`, appName)
+			fmt.Fprintf(&cssEnableMap, `,"%s":1`, appName)
 		}
 
 		utils.Replace(
 			&content,
 			`\{(\d+:"xpui)`,
 			func(submatches ...string) string {
-				return fmt.Sprintf("{%s%s", appMap, submatches[1])
+				return fmt.Sprintf("{%s%s", appMap.String(), submatches[1])
 			})
 
 		// Seek to the full matched React.lazy pattern
@@ -354,7 +438,7 @@ func insertCustomApp(jsPath string, flags Flag) {
 		content = strings.Replace(
 			content,
 			matchedReactPattern,
-			fmt.Sprintf("%s%s", matchedReactPattern, appReactMap),
+			fmt.Sprintf("%s%s", matchedReactPattern, appReactMap.String()),
 			1,
 		)
 
@@ -362,16 +446,16 @@ func insertCustomApp(jsPath string, flags Flag) {
 			&content,
 			matchedElementPattern,
 			func(submatches ...string) string {
-				return fmt.Sprintf("%s%s", appEleMap, submatches[0])
+				return fmt.Sprintf("%s%s", appEleMap.String(), submatches[0])
 			})
 
-		content = insertNavLink(content, appNameArray)
+		content = insertNavLink(content, appNameArray.String())
 
 		utils.ReplaceOnce(
 			&content,
 			`\d+:1,\d+:1,\d+:1`,
 			func(submatches ...string) string {
-				return fmt.Sprintf("%s%s", submatches[0], cssEnableMap)
+				return fmt.Sprintf("%s%s", submatches[0], cssEnableMap.String())
 			})
 
 		return content

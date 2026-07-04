@@ -247,7 +247,7 @@ func pushExtensions(destExt string, list ...string) {
 		} else {
 			extName = v
 			if !strings.Contains(extName, ".js") && !strings.Contains(extName, ".mjs") {
-				extName += ".js"
+				extName = extName + ".js"
 			}
 			extPath, err = utils.GetExtensionPath(extName)
 			if err != nil {
@@ -367,8 +367,8 @@ func RefreshApps(list ...string) {
 		}
 
 		jsTemplate := fmt.Sprintf(
-			`(("undefined"!=typeof self?self:global).webpackChunkclient_web=("undefined"!=typeof self?self:global).webpackChunkclient_web||[])
-.push([["%s"],{"%s":(e,t,n)=>{
+			`((globalScope)=>((globalScope.rspackChunkclient_web=globalScope.rspackChunkclient_web||globalScope.webpackChunkclient_web||[]),(globalScope.webpackChunkclient_web=globalScope.webpackChunkclient_web||globalScope.rspackChunkclient_web)))
+("undefined"!=typeof self?self:global).push([["%s"],{"%s":(e,t,n)=>{
 "use strict";n.r(t),n.d(t,{default:()=>render});
 %s
 }}]);`,

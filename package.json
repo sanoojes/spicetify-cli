@@ -1,0 +1,25 @@
+{
+  "name": "@spicetify/cli",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:wrapper": "node scripts/build-wrapper.mjs",
+    "check:wrapper": "node scripts/build-wrapper.mjs --check",
+    "fmt": "oxfmt scripts src/jsHelper/spicetifyWrapper package.json .oxfmtrc.json .oxlintrc.json",
+    "fmt:check": "oxfmt --check scripts src/jsHelper/spicetifyWrapper package.json .oxfmtrc.json .oxlintrc.json",
+    "lint": "oxlint ."
+  },
+  "devDependencies": {
+    "esbuild": "0.25.11",
+    "oxfmt": "0.56.0",
+    "oxlint": "1.71.0",
+    "oxlint-tsgolint": "0.23.0"
+  },
+  "engines": {
+    "node": ">=18",
+    "npm": "please-use-pnpm",
+    "pnpm": ">=8",
+    "yarn": "please-use-pnpm"
+  },
+  "packageManager": "pnpm@11.9.0"
+}

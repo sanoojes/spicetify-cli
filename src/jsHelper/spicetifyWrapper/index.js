@@ -1,0 +1,13 @@
+import "./core.js";
+import "./events.js";
+import "./platform.js";
+import "./icons.js";
+import "./menus.js";
+import "./custom-apps.js";
+import "./webpack.js";
+import "./player-events.js";
+import "./helpers.js";
+import "./popup.js";
+import "./topbar.js";
+import "./playbar.js";
+import "./update.js";

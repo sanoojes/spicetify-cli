@@ -17,10 +17,23 @@ jobs:
       - name: Checkout the repo
         uses: actions/checkout@v7
 
-      - name: Setup Biome
-        uses: biomejs/setup-biome@v2
-        with:
-          version: latest
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
 
-      - name: Run Biome
-        run: biome ci . --files-ignore-unknown=true --diagnostic-level=error
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Install Node dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate wrapper build
+        run: pnpm check:wrapper
+
+      - name: Check formatting
+        run: pnpm fmt:check
+
+      - name: Lint
+        run: pnpm lint

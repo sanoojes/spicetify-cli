@@ -447,9 +447,10 @@
 	}
 
 	async function fetchLikedTracks() {
-		const res = await Spicetify.CosmosAsync.get("sp://core-collection/unstable/@/list/tracks/all?responseFormat=protobufJson");
+		const limit = 9999999;
+		const res = await Spicetify.Platform.LibraryAPI.getTracks({ limit });
 
-		return res.item.filter((track) => track.trackMetadata.playable).map((track) => track.trackMetadata.link);
+		return res.items.filter((track) => track.isPlayable).map((track) => track.uri);
 	}
 
 	async function fetchLocalTracks() {

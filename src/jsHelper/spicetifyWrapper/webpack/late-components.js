@@ -3,12 +3,21 @@ import { cardName, findCards, lazyCardTypes } from "./cards.js";
 import { findDropdownComponent, wrapProvider } from "./component-resolvers.js";
 import { createModuleInventoryScanner } from "./module-inventory.js";
 
+const LATE_COMPONENTS = ["Slider", "Dropdown", "Toggle", "Cards.Artist", "Cards.Audiobook", "Cards.Profile", "Cards.Show", "Cards.Track"];
+
+function hasComponent(component) {
+  return component.split(".").reduce((owner, key) => owner?.[key], Spicetify.ReactComponent) !== undefined;
+}
+
+function hasLateComponents() {
+  return LATE_COMPONENTS.every(hasComponent);
+}
+
 export function waitForLateComponents({ require, refreshNavLinks }) {
   const inventory = createModuleInventoryScanner();
 
   (function waitForChunks(attempt = 0) {
-    const listOfComponents = ["Slider", "Dropdown", "Toggle", "Cards.Artist", "Cards.Audiobook", "Cards.Profile", "Cards.Show", "Cards.Track"];
-    if (listOfComponents.every((component) => component.split(".").reduce((o, k) => o?.[k], Spicetify.ReactComponent) !== undefined)) return;
+    if (hasLateComponents()) return;
 
     const { chunks: newChunks, modules: newModules, functionModules: newFunctionModules } = inventory.scan(require);
 
@@ -33,7 +42,7 @@ export function waitForLateComponents({ require, refreshNavLinks }) {
       }
     }
 
-    if (!listOfComponents.every((component) => component.split(".").reduce((o, k) => o?.[k], Spicetify.ReactComponent) !== undefined)) {
+    if (!hasLateComponents()) {
       setTimeout(() => waitForChunks(attempt + 1), Math.min(100 * 2 ** Math.min(attempt, 4), 1000));
       return;
     }

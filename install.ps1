@@ -122,7 +122,9 @@ function Add-SpicetifyToPath {
   }
   end {
     [Environment]::SetEnvironmentVariable('PATH', $path, $user)
-    $env:PATH = $path
+    if (($env:PATH -split ';') -notcontains $spicetifyFolderPath) {
+      $env:PATH = "$env:PATH;$spicetifyFolderPath"
+    }
     Write-Success
   }
 }

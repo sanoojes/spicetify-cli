@@ -139,6 +139,11 @@ case $SHELL in
     *) notfound ;;
 esac
 
+case ":$PATH:" in
+    *":$spicetify_install:"*) ;;
+    *) export PATH="$spicetify_install:$PATH" ;;
+esac
+
 echo
 log "spicetify v$tag was installed successfully to $spicetify_install"
 log "Run 'spicetify --help' to get started"

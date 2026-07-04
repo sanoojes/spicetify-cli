@@ -195,8 +195,6 @@ function toCamelCase(type, capitalizeFirst = false) {
 }
 
 export function waitForURI(cache) {
-  // Computed once and reused across retries instead of re-deriving the same
-  // (unchanging) inventory on every poll tick.
   const inventory = normalizeInventory(cache);
 
   (function waitForURI(attempt = 0) {
@@ -241,7 +239,6 @@ export function waitForURI(cache) {
       const func = isURIFunctions.find((m) => fnStr(m).match(new RegExp(`===[\\w$]+\\.${type}(?!_)\\}`)));
       const camelCaseType = toCamelCase(type, true);
 
-      // Fill in missing functions, only serves as placebo as they cannot be as accurate as the original functions
       Spicetify.URI[`is${camelCaseType}`] =
         func ??
         ((uri) => {

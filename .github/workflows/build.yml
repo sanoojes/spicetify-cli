@@ -62,6 +62,8 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v2')
     needs: build
+    env:
+      SIGNPATH_ENABLED: ${{ secrets.SIGNPATH_API_TOKEN != '' && secrets.SIGNPATH_ORG_ID != '' }}
 
     steps:
       - name: Checkout
@@ -107,7 +109,7 @@ jobs:
           CGO_ENABLED: 0
 
       - name: Upload Artifact for Signing
-        if: env.IS_WIN == 'true'
+        if: env.IS_WIN == 'true' && env.SIGNPATH_ENABLED == 'true'
         id: upload-artifact-for-signing
         uses: actions/upload-artifact@v7
         with:
@@ -115,7 +117,7 @@ jobs:
           path: ./spicetify.exe
 
       - name: Sign Windows Executable
-        if: env.IS_WIN == 'true'
+        if: env.IS_WIN == 'true' && env.SIGNPATH_ENABLED == 'true'
         uses: signpath/github-action-submit-signing-request@v2
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -127,7 +129,7 @@ jobs:
           output-artifact-directory: "./signed"
 
       - name: Copy Signed Windows Executable
-        if: env.IS_WIN == 'true'
+        if: env.IS_WIN == 'true' && env.SIGNPATH_ENABLED == 'true'
         run: |
           cp ./signed/spicetify.exe ./spicetify.exe
 

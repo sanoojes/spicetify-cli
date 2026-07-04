@@ -139,18 +139,35 @@
 
 		let remoteConfiguration = Spicetify.RemoteConfigResolver?.value.remoteConfiguration || Spicetify.Platform?.RemoteConfiguration;
 		const setOverrides = async (overrides) => {
-			if (Spicetify.Platform?.RemoteConfigDebugAPI) {
+			const remoteConfigDebugAPI = Spicetify.Platform?.RemoteConfigDebugAPI;
+
+			if (remoteConfigDebugAPI?.getProperties && (remoteConfigDebugAPI.setOverrides || remoteConfigDebugAPI.setOverride)) {
+				const properties = await remoteConfigDebugAPI.getProperties();
+				const overrideEntries = Object.entries(overrides)
+					.map(([name, value]) => {
+						const feature = overrideList[name];
+						const type = feature?.values ? "enum" : typeof value === "number" ? "number" : "boolean";
+						const ref = properties.find(property => property?.source === "web" && property?.type === type && property?.name === name);
+
+						return ref ? { ref, value } : null;
+					})
+					.filter(Boolean);
+
+				if (overrideEntries.length === 0) return;
+
+				if (remoteConfigDebugAPI.setOverrides) {
+					await remoteConfigDebugAPI.setOverrides(overrideEntries, { autoRunOverrideEffects: true });
+					return;
+				}
+
+				for (const override of overrideEntries) {
+					await remoteConfigDebugAPI.setOverride(override, { autoRunOverrideEffects: override.ref.localValue !== override.value });
+				}
+			} else if (remoteConfigDebugAPI?.setOverride) {
 				for (const [name, value] of Object.entries(overrides)) {
 					const feature = overrideList[name];
-					const type = feature.values ? "enum" : typeof value === "number" ? "number" : "boolean";
-					await Spicetify.Platform.RemoteConfigDebugAPI.setOverride(
-						{
-							source: "web",
-							type,
-							name,
-						},
-						value
-					);
+					const type = feature?.values ? "enum" : typeof value === "number" ? "number" : "boolean";
+					await remoteConfigDebugAPI.setOverride({ source: "web", type, name }, value);
 				}
 			} else if (Spicetify.RemoteConfigResolver?.value?.setOverrides) {
 				Spicetify.RemoteConfigResolver.value.setOverrides(Spicetify.createInternalMap?.(overrides));

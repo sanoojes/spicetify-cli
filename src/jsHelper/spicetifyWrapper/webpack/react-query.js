@@ -162,8 +162,7 @@ export function findReactQuery({ cache, modules, functionModules }) {
       validated(directPersistQueryClientProvider, isPersistQueryClientProvider) ??
       fiberReactQuery.PersistQueryClientProvider ??
       findPersistQueryClientProvider({ cache, functionModules }),
-    QueryClient:
-      validated(directQueryClient, isQueryClient) ?? fiberReactQuery.QueryClient ?? findQueryClient({ cache, modules, functionModules }),
+    QueryClient: validated(directQueryClient, isQueryClient) ?? fiberReactQuery.QueryClient ?? findQueryClient({ cache, modules, functionModules }),
     QueryClientProvider:
       validated(directQueryClientProvider, isQueryClientProvider) ??
       fiberReactQuery.QueryClientProvider ??
